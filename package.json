@@ -1,0 +1,38 @@
+{
+  "name": "social-media-network",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Jacob Valdez",
+  "license": "ISC",
+  "dependencies": {
+    "apollo-server-express": "^3.13.0",
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "graph-data-structure": "^3.5.0",
+    "graphql": "^16.8.1",
+    "graphql-subscriptions": "^2.0.0",
+    "i18n": "^0.15.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "rate-limiter-flexible": "^5.0.3",
+    "reflect-metadata": "^0.2.2",
+    "ts-node-dev": "^2.0.0",
+    "type-graphql": "^2.0.0-rc.1",
+    "typeorm": "^0.3.20",
+    "typescript": "^5.4.5",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^4.17.21",
+    "@types/i18n": "^0.13.12",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.12.13"
+  }
+}
