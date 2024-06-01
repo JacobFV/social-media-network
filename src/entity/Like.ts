@@ -1,4 +1,3 @@
-
 import { Entity, PrimaryGeneratedColumn, ManyToOne, BaseEntity } from "typeorm";
 import { ObjectType, Field, ID } from "type-graphql";
 import { User } from "./User";
@@ -12,19 +11,19 @@ export class Like extends BaseEntity {
   id: number;
 
   @Field(() => User)
-  @ManyToOne(() => User, user => user.likes)
+  @ManyToOne(() => User, (user) => user.likes)
   user: User;
 
   @Field(() => Post)
-  @ManyToOne(() => Post, post => post.likes)
+  @ManyToOne(() => Post, (post) => post.likes)
   post: Post;
-}
 
-@Mutation(() => Boolean)
-async likePost(@Arg("postId") postId: number): Promise<boolean> {
-  const post = await Post.findOne(postId);
-  if (!post) throw new Error("Post not found");
-  const like = Like.create({ user: this, post });
-  await like.save();
-  return true;
+  @Mutation(() => Boolean)
+  async likePost(@Arg("postId") postId: number): Promise<boolean> {
+    const post = await Post.findOne(postId);
+    if (!post) throw new Error("Post not found");
+    const like = Like.create({ user: this, post });
+    await like.save();
+    return true;
+  }
 }
