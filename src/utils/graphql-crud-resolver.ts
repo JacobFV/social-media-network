@@ -9,15 +9,8 @@ import {
 } from "type-graphql";
 
 import { Repository, getRepository } from "typeorm";
-import { permissions } from "../decorators/permissions";
+import { permissions } from "@/decorators/permissions";
 import "reflect-metadata";
-
-interface Context {
-  currentAuthenticatedUser: any;
-  dbSession: any;
-  config: any;
-  currentRecord: any;
-}
 
 export function createCRUDResolvers<T extends ClassType>(
   Entity: T,

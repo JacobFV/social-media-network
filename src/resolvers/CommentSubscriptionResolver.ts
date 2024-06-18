@@ -1,6 +1,6 @@
 import { PubSubEngine } from "graphql-subscriptions";
 import { PubSub, Subscription, Arg, Root } from "type-graphql";
-import { Comment } from "../entity/Comment";
+import { Comment } from "../models/Comment";
 
 const COMMENT_ADDED = "COMMENT_ADDED";
 

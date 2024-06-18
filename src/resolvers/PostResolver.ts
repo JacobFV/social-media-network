@@ -1,5 +1,5 @@
 import { Resolver } from "type-graphql";
-import { Post } from "../entity/Post";
+import { Post } from "../models/Post";
 import { createCRUDResolvers } from "../utils/crudResolvers";
 
 const BasePostResolver = createCRUDResolvers(Post, "Post");
