@@ -1,34 +1,29 @@
 import { config } from "@/core/config";
+import { entities } from "@/core/db/registry";
 import { singleton } from "@/utils/singleton-runner";
 import { DataSource, EntitySchema } from "typeorm";
 
-let appDataSource: DataSource;
-const entities: (Function | EntitySchema)[] = [];
+export const appDataSource = new DataSource({
+  type: "postgres",
+  host: config.databaseHost,
+  port: config.databasePort,
+  username: config.databaseUser,
+  password: config.databasePassword,
+  database: config.databaseName,
+  entities: entities,
+});
 
 const ensureDataSourceInitialized = singleton(async () => {
-  if (appDataSource) {
+  if (appDataSource.isInitialized) {
     console.debug("Data source already initialized!");
     return;
   }
   console.debug("Initializing data source...");
-  appDataSource = new DataSource({
-    type: "postgres",
-    host: config.databaseHost,
-    port: config.databasePort,
-    username: config.databaseUser,
-    password: config.databasePassword,
-    database: config.databaseName,
-    entities: entities,
-  });
+  await appDataSource.initialize();
   console.debug("Data source has been initialized!");
 });
 
 export async function getDataSource() {
   await ensureDataSourceInitialized();
   return appDataSource;
-}
-
-export function registerEntity(entity: Function | EntitySchema) {
-  entities.push(entity);
-  return entity;
 }
