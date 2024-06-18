@@ -61,8 +61,9 @@ export class User
   posts: Post[];
 
   @typeGQL.Field()
-  @typeORM.OneToMany(() => Comment, (comment) => comment.author)
-  comments: Comment[];
+  get comments(): Comment[] {
+    return this.posts.flatMap((post) => post.comments);
+  }
 
   @typeGQL.Field()
   @typeORM.ManyToMany(() => User)
