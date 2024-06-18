@@ -8,49 +8,52 @@ import {
   Ctx,
 } from "type-graphql";
 
-import { Repository, getRepository } from "typeorm";
-import { permissions } from "@/decorators/permissions";
+import { FindOptionsWhere, Repository } from "typeorm";
 import "reflect-metadata";
+import { appDataSource } from "@/core/db/appDataSource";
+import Context from "@/utils/context";
+import { isOwner } from "@/utils/permissions";
+import { EntityWithID } from "@/entity/base";
 
-export function createCRUDResolvers<T extends ClassType>(
+export function createCRUDResolvers<T extends EntityWithID<T> & ClassType>(
   Entity: T,
-  name: string
+  name?: string
 ) {
-  @Resolver({ isAbstract: true })
+  name = name ?? Entity.name;
+
+  @Resolver(Entity)
   abstract class BaseResolver {
-    protected repository: Repository<T>;
+    protected repository: Repository<T> =
+      appDataSource.getRepository<T>(Entity);
 
-    constructor() {
-      this.repository = getRepository(Entity);
-    }
-
-    @Query(() => [Entity], { name: `${name}s` })
+    @Query(() => [Entity], { name: `getAll${name}s` })
     async getAll(): Promise<T[]> {
       return this.repository.find();
     }
 
-    @Query(() => Entity, { name: `${name}` })
-    async getOne(@Arg("id") id: number): Promise<T | undefined> {
-      return this.repository.findOne(id);
+    @Query(() => Entity, { name: `get${name}` })
+    async getOne(@Arg("id") id: number): Promise<T | null> {
+      return this.repository.findOneBy({ id } as FindOptionsWhere<T>);
     }
 
     @Mutation(() => Entity, { name: `create${name}` })
     async create(@Arg("data") data: any): Promise<T> {
-      const entity = this.repository.create(data);
-      return this.repository.save(entity);
+      const entities = this.repository.create([data]);
+      const savedEntities = await this.repository.save(entities);
+      return savedEntities[0];
     }
 
     @Mutation(() => Entity, { name: `update${name}` })
-    @UseMiddleware(permissions((context: Context) => userIsOwner(context)))
+    @UsePermissionsMiddleware(isOwner, ["owner"])
     async update(
       @Arg("id") id: number,
       @Arg("data") data: any,
       @Ctx() context: Context
     ): Promise<T | undefined> {
-      const entity = await this.repository.findOne(id);
+      const entity = await this.repository.findOneBy({
+        id,
+      } as FindOptionsWhere<T>);
       if (!entity) throw new Error(`${name} not found!`);
-
-      context.currentRecord = entity; // Set current record in context
 
       Object.assign(entity, data);
       return this.repository.save(entity);
@@ -58,7 +61,9 @@ export function createCRUDResolvers<T extends ClassType>(
 
     @Mutation(() => Boolean, { name: `delete${name}` })
     async delete(@Arg("id") id: number): Promise<boolean> {
-      const entity = await this.repository.findOne(id);
+      const entity = await this.repository.findOneBy({
+        id,
+      } as FindOptionsWhere<T>);
       if (!entity) throw new Error(`${name} not found!`);
 
       await this.repository.remove(entity);
@@ -72,17 +77,17 @@ export function createCRUDResolvers<T extends ClassType>(
   Object.getOwnPropertyNames(Entity).forEach((propertyName) => {
     const method = (Entity as any)[propertyName];
     const isQuery = Reflect.getMetadata(
-      "isQuery",
+      "type-server:isQuery",
       Entity.prototype,
       propertyName
     );
     const isMutation = Reflect.getMetadata(
-      "isMutation",
+      "type-server:isMutation",
       Entity.prototype,
       propertyName
     );
     const returnType = Reflect.getMetadata(
-      "returnType",
+      "type-server:returnType",
       Entity.prototype,
       propertyName
     );
@@ -106,3 +111,7 @@ export function createCRUDResolvers<T extends ClassType>(
 
   return resolver;
 }
+
+// function UsePermissionsMiddleware(isOwner: () => (context: Context) => Promise<boolean>, arg1: string[]): (target: BaseResolver, propertyKey: "update", descriptor: TypedPropertyDescriptor<(id: number, data: any, context: Context) => Promise<T | undefined>>) => void | TypedPropertyDescriptor<...> {
+//   throw new Error("Function not implemented.");
+// }
