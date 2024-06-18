@@ -10,10 +10,10 @@
   "author": "Jacob Valdez",
   "license": "ISC",
   "dependencies": {
+    "@types/graphql": "^14.5.0",
     "apollo-server-express": "^3.13.0",
     "bcryptjs": "^2.4.3",
     "commander": "^12.1.0",
-    "drizzle-orm": "^0.31.2",
     "express": "^4.19.2",
     "graph-data-structure": "^3.5.0",
     "graphql": "^16.8.2",
@@ -25,11 +25,13 @@
     "reflect-metadata": "^0.2.2",
     "ts-node-dev": "^2.0.0",
     "type-graphql": "2.0.0-rc.1",
+    "typeorm": "^0.3.20",
     "typescript": "^5.4.5",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^4.17.21",
     "@types/i18n": "^0.13.12",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/multer": "^1.4.11",
