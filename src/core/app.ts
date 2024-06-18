@@ -1,11 +1,11 @@
 import "reflect-metadata";
 import Express, { Request, Response, NextFunction, Application } from "express";
-import { authMiddleware } from "./middleware/authMiddleware";
-import { errorHandler } from "./middleware/errorHandler";
-import { rateLimiterMiddleware } from "./middleware/rateLimiter";
-import { i18nMiddleware } from "./middleware/i18nMiddleware";
 
 import { upload } from "./storage";
+import { authMiddleware } from "@/middleware/authMiddleware";
+import { rateLimiterMiddleware } from "@/middleware/rateLimiter";
+import { errorHandler } from "@/middleware/errorHandler";
+import { i18nMiddleware } from "@/middleware/i18nMiddleware";
 
 declare global {
   namespace Express {
