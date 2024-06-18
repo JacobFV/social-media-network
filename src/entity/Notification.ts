@@ -1,25 +1,19 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  BaseEntity,
-} from "typeorm";
-import { ObjectType, Field, ID } from "type-graphql";
+import * as typeORM from "typeorm";
+import * as typeGQL from "type-graphql";
 import { User } from "./User";
 
-@ObjectType()
-@Entity()
-export class Notification extends BaseEntity {
-  @Field(() => ID)
-  @PrimaryGeneratedColumn()
+@typeGQL.ObjectType()
+@typeORM.Entity()
+export class Notification extends typeORM.BaseEntity {
+  @typeGQL.Field(() => typeGQL.ID)
+  @typeORM.PrimaryGeneratedColumn()
   id: number;
 
-  @Field()
-  @Column()
+  @typeGQL.Field()
+  @typeORM.Column()
   content: string;
 
-  @Field(() => User)
-  @ManyToOne(() => User, (user) => user.notifications)
+  @typeGQL.Field(() => User)
+  @typeORM.ManyToOne(() => User, (user) => user.notifications)
   user: User;
 }

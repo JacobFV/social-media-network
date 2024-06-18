@@ -1,42 +1,39 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  OneToMany,
-  BaseEntity,
-} from "typeorm";
-import { ObjectType, Field, ID, Arg, Mutation, Query } from "type-graphql";
+import * as typeORM from "typeorm";
+import * as typeGQL from "type-graphql";
 import { User } from "./User";
 import { Comment } from "./Comment";
 import { Like } from "./Like";
+import Context from "@/utils/context";
 
-@ObjectType()
-@Entity()
-export class Post extends BaseEntity {
-  @Field(() => ID)
-  @PrimaryGeneratedColumn()
+@typeGQL.ObjectType()
+@typeORM.Entity()
+export class Post extends typeORM.BaseEntity {
+  @typeGQL.Field(() => typeGQL.ID)
+  @typeORM.PrimaryGeneratedColumn()
   id: number;
 
-  @Field()
-  @Column()
+  @typeGQL.Field()
+  @typeORM.Column()
   content: string;
 
-  @Field(() => User)
-  @ManyToOne(() => User, (user) => user.posts)
+  @typeGQL.Field(() => User)
+  @typeORM.JoinColumn()
+  @typeORM.ManyToOne(() => User, (user) => user.posts)
   author: User;
 
-  @Field(() => [Comment])
-  @OneToMany(() => Comment, (comment) => comment.post)
+  @typeGQL.Field(() => [Comment])
+  @typeORM.OneToMany(() => Comment, (comment) => comment.post)
   comments: Comment[];
 
-  @Field(() => [Like])
-  @OneToMany(() => Like, (like) => like.post)
+  @typeGQL.Field(() => [Like])
+  @typeORM.OneToMany(() => Like, (like) => like.post)
   likes: Like[];
 
-  @Query(() => Boolean)
-  async isVisibleToUser(@Arg("userId") userId: number): Promise<boolean> {
-    const user = await User.findOne(userId, { relations: ["following"] });
+  @typeGQL.Query(() => Boolean)
+  async isVisibleToUser(
+    @typeGQL.Arg("userId") userId: number
+  ): Promise<boolean> {
+    const user = await User.findOneBy({ id: userId });
     if (!user) throw new Error("User not found");
     if (
       this.author.id === userId ||
@@ -47,30 +44,41 @@ export class Post extends BaseEntity {
     return false;
   }
 
-  @Mutation(() => Post)
-  async createPost(@Arg("content") content: string): Promise<Post> {
+  @typeGQL.Mutation(() => Post)
+  async createPost(@typeGQL.Arg("content") content: string): Promise<Post> {
     const post = Post.create({ content, author: this });
     await post.save();
     return post;
   }
 
-  @Mutation(() => Boolean)
-  async deletePost(@Arg("postId") postId: number): Promise<boolean> {
-    const post = await Post.findOne(postId);
+  @typeGQL.Mutation(() => Boolean)
+  async deletePost(@typeGQL.Arg("postId") postId: number): Promise<boolean> {
+    const post = await Post.findOneBy({ id: postId });
     if (!post) throw new Error("Post not found");
     await post.remove();
     return true;
   }
 
-  @Mutation(() => Post)
+  @typeGQL.Mutation(() => Post)
   async editPost(
-    @Arg("postId") postId: number,
-    @Arg("content") content: string
+    @typeGQL.Arg("postId") postId: number,
+    @typeGQL.Arg("content") content: string
   ): Promise<Post> {
-    const post = await Post.findOne(postId);
+    const post = await Post.findOneBy({ id: postId });
     if (!post) throw new Error("Post not found");
     post.content = content;
     await post.save();
     return post;
+  }
+  @typeGQL.Mutation(() => Comment)
+  async addComment(
+    @typeGQL.Arg("content") content: string,
+    @typeGQL.Ctx() ctx: Context
+  ): Promise<Comment> {
+    const author = ctx.currentAuthenticatedUser;
+    if (!author) throw new Error("User not found");
+    const comment = Comment.create({ content, author, post: this });
+    await comment.save();
+    return comment;
   }
 }

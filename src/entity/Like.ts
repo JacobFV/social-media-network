@@ -1,26 +1,26 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne, BaseEntity } from "typeorm";
-import { ObjectType, Field, ID } from "type-graphql";
+import * as typeORM from "typeorm";
+import * as typeGQL from "type-graphql";
 import { User } from "./User";
 import { Post } from "./Post";
 
-@ObjectType()
-@Entity()
-export class Like extends BaseEntity {
-  @Field(() => ID)
-  @PrimaryGeneratedColumn()
+@typeGQL.ObjectType()
+@typeORM.Entity()
+export class Like extends typeORM.BaseEntity {
+  @typeGQL.Field(() => typeGQL.ID)
+  @typeORM.PrimaryGeneratedColumn()
   id: number;
 
-  @Field(() => User)
-  @ManyToOne(() => User, (user) => user.likes)
+  @typeGQL.Field(() => User)
+  @typeORM.ManyToOne(() => User, (user) => user.likes)
   user: User;
 
-  @Field(() => Post)
-  @ManyToOne(() => Post, (post) => post.likes)
+  @typeGQL.Field(() => Post)
+  @typeORM.ManyToOne(() => Post, (post) => post.likes)
   post: Post;
 
-  @Mutation(() => Boolean)
-  async likePost(@Arg("postId") postId: number): Promise<boolean> {
-    const post = await Post.findOne(postId);
+  @typeGQL.Mutation(() => Boolean)
+  async likePost(@typeGQL.Arg("postId") postId: number): Promise<boolean> {
+    const post = await Post.findOne({ where: { id: postId } });
     if (!post) throw new Error("Post not found");
     const like = Like.create({ user: this, post });
     await like.save();

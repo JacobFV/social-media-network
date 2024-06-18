@@ -1,52 +1,46 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  BaseEntity,
-} from "typeorm";
-import { ObjectType, Field, ID } from "type-graphql";
+import * as typeORM from "typeorm";
+import * as typeGQL from "type-graphql";
 import { User } from "./User";
 
-@ObjectType()
-@Entity()
-export class Message extends BaseEntity {
-  @Field(() => ID)
-  @PrimaryGeneratedColumn()
+@typeGQL.ObjectType()
+@typeORM.Entity()
+export class Message extends typeORM.BaseEntity {
+  @typeGQL.Field(() => typeGQL.ID)
+  @typeORM.PrimaryGeneratedColumn()
   id: number;
 
-  @Field()
-  @Column()
+  @typeGQL.Field()
+  @typeORM.Column()
   content: string;
 
-  @Field(() => User)
-  @ManyToOne(() => User, (user) => user.sentMessages)
+  @typeGQL.Field(() => User)
+  @typeORM.ManyToOne(() => User, (user) => user.sentMessages)
   sender: User;
 
-  @Field(() => User)
-  @ManyToOne(() => User, (user) => user.receivedMessages)
+  @typeGQL.Field(() => User)
+  @typeORM.ManyToOne(() => User, (user) => user.receivedMessages)
   receiver: User;
 
-  @Mutation(() => Message)
-  @authorizedd(isOwner)
+  @typeGQL.Mutation(() => Message)
+  @typeGQL.Authorized("isOwner")
   async sendMessage(
-    @Arg("receiverId") receiverId: number,
-    @Arg("content") content: string
+    @typeGQL.Arg("receiverId") receiverId: number,
+    @typeGQL.Arg("content") content: string
   ): Promise<Message> {
-    const receiver = await User.findOne(receiverId);
+    const receiver = await User.findOne({ where: { id: receiverId } });
     if (!receiver) throw new Error("User not found");
     const message = Message.create({ content, sender: this, receiver });
     await message.save();
     return message;
   }
 
-  @Subscription(() => Message, {
+  @typeGQL.Subscription(() => Message, {
     topics: "NEW_MESSAGE",
     filter: ({ payload, args }) => payload.receiverId === args.receiverId,
   })
   onNewMessage(
-    @Arg("receiverId") receiverId: number,
-    @Root() message: Message
+    @typeGQL.Arg("receiverId") receiverId: number,
+    @typeGQL.Root() message: Message
   ): Message {
     return message;
   }

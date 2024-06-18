@@ -1,25 +1,5 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  OneToMany,
-  ManyToMany,
-  JoinTable,
-  BaseEntity,
-  BeforeInsert,
-} from "typeorm";
-import {
-  ObjectType,
-  Field,
-  ID,
-  Arg,
-  Mutation,
-  Query,
-  Resolver,
-  Root,
-  Subscription,
-} from "type-graphql";
+import * as typeORM from "typeorm";
+import * as typeGQL from "type-graphql";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { Post } from "./Post";
@@ -27,59 +7,81 @@ import { Comment } from "./Comment";
 import { Like } from "./Like";
 import { Notification } from "./Notification";
 import { Message } from "./Message";
+import {
+  CustomBaseEntity,
+  EntityWithID,
+  EntityWithOwner,
+} from "@/entity/CustomBaseEntity";
+import { Ctx } from "type-graphql";
+import Context from "@/utils/context";
+import { UsePermissionsMiddleware } from "@/utils/permissions";
+import { isAuthenticated } from "@/utils/permissions";
 
-@ObjectType()
-@Entity()
-export class User extends BaseEntity {
-  @Field(() => ID)
-  @PrimaryGeneratedColumn()
+@typeGQL.ObjectType()
+@typeORM.Entity()
+export class User
+  extends CustomBaseEntity<User>
+  implements EntityWithID<User>, EntityWithOwner<User>
+{
+  @typeGQL.Field((type) => typeGQL.ID)
+  @typeORM.PrimaryGeneratedColumn()
   id: number;
 
-  @Field()
-  @Column({ unique: true })
+  @typeGQL.Field((type) => typeGQL.ID)
+  @typeORM.Column()
+  ownerId: number;
+
+  @typeGQL.Field()
+  @typeORM.Column({ unique: true })
   username: string;
 
-  @Column()
+  @typeGQL.Field({ description: "primary email" })
+  @typeORM.Column()
   email: string;
 
-  @Column()
+  @typeGQL.Field()
+  @typeORM.Column()
   password: string;
 
-  @Field()
-  @Column({ default: false })
+  @typeGQL.Field()
+  @typeORM.Column({ default: false })
   isPrivate: boolean;
 
-  @Field(() => [User])
-  @ManyToMany(() => User, (user) => user.following)
-  @JoinTable()
+  @typeGQL.Field()
+  @typeORM.ManyToMany(() => User, (user) => user.following)
+  @typeORM.JoinTable()
   followers: User[];
 
-  @Field(() => [User])
-  @ManyToMany(() => User, (user) => user.followers)
+  @typeGQL.Field()
+  @typeORM.ManyToMany(() => User, (user) => user.followers)
   following: User[];
 
-  @Field(() => [Post])
-  @OneToMany(() => Post, (post) => post.author)
+  @typeGQL.Field()
+  @typeORM.OneToMany(() => Post, (post) => post.author)
   posts: Post[];
 
-  @Field(() => [User])
-  @ManyToMany(() => User)
-  @JoinTable()
+  @typeGQL.Field()
+  @typeORM.OneToMany(() => Comment, (comment) => comment.author)
+  comments: Comment[];
+
+  @typeGQL.Field()
+  @typeORM.ManyToMany(() => User)
+  @typeORM.JoinTable()
   followRequests: User[];
 
-  @Field(() => [Notification])
-  @OneToMany(() => Notification, (notification) => notification.user)
+  @typeGQL.Field()
+  @typeORM.OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
 
-  @Field(() => [Message])
-  @OneToMany(() => Message, (message) => message.sender)
+  @typeGQL.Field()
+  @typeORM.OneToMany(() => Message, (message) => message.sender)
   sentMessages: Message[];
 
-  @Field(() => [Message])
-  @OneToMany(() => Message, (message) => message.receiver)
+  @typeGQL.Field()
+  @typeORM.OneToMany(() => Message, (message) => message.receiver)
   receivedMessages: Message[];
 
-  @BeforeInsert()
+  @typeORM.BeforeInsert()
   async hashPassword() {
     this.password = await bcrypt.hash(this.password, 10);
   }
@@ -96,37 +98,43 @@ export class User extends BaseEntity {
     );
   }
 
-  @Mutation(() => String)
+  @typeGQL.Mutation(() => String, { description: "Login and return JWT token" })
   async login(
-    @Arg("username") username: string,
-    @Arg("password") password: string
+    @typeGQL.Arg("username") username: string,
+    @typeGQL.Arg("password") password: string
   ): Promise<string> {
-    const user = await User.findOne({ where: { username } });
+    const user = await User.findOneBy({ username });
     if (!user || !(await user.validatePassword(password))) {
       throw new Error("Invalid credentials");
     }
     return user.generateJWT();
   }
 
-  @Mutation(() => User)
+  @typeGQL.Mutation(() => User)
   async register(
-    @Arg("username") username: string,
-    @Arg("email") email: string,
-    @Arg("password") password: string
+    @typeGQL.Arg("username") username: string,
+    @typeGQL.Arg("email") email: string,
+    @typeGQL.Arg("password") password: string
   ): Promise<User> {
     const user = User.create({ username, email, password });
     await user.save();
     return user;
   }
 
-  @Mutation(() => Boolean)
+  @typeGQL.Mutation(() => Boolean)
+  @UsePermissionsMiddleware(isAuthenticated())
   async requestToFollow(
-    @Arg("targetUserId") targetUserId: number
+    @typeGQL.Arg("targetUserId") targetUserId: number,
+    @Ctx() ctx: Context
   ): Promise<boolean> {
-    const targetUser = await User.findOne(targetUserId);
+    const currentUser = ctx.currentRecord;
+    if (!currentUser) throw new Error("User not found");
+    if (!(currentUser instanceof User)) throw new Error("User not found");
+
+    const targetUser = await User.findOneBy({ id: targetUserId });
     if (!targetUser) throw new Error("User not found");
     if (targetUser.isPrivate) {
-      targetUser.followRequests.push(this);
+      targetUser.followRequests.push(currentUser);
       await targetUser.save();
       const notification = Notification.create({
         content: `${this.username} wants to follow you`,
@@ -134,17 +142,17 @@ export class User extends BaseEntity {
       });
       await notification.save();
     } else {
-      this.following.push(targetUser);
-      await this.save();
+      currentUser.following.push(targetUser);
+      await currentUser.save();
     }
     return true;
   }
 
-  @Mutation(() => Boolean)
+  @typeGQL.Mutation(() => Boolean)
   async acceptFollowRequest(
-    @Arg("requesterUserId") requesterUserId: number
+    @typeGQL.Arg("requesterUserId") requesterUserId: number
   ): Promise<boolean> {
-    const requesterUser = await User.findOne(requesterUserId);
+    const requesterUser = await User.findOneBy({ id: requesterUserId });
     if (!requesterUser) throw new Error("User not found");
     this.followRequests = this.followRequests.filter(
       (user) => user.id !== requesterUserId
@@ -156,9 +164,9 @@ export class User extends BaseEntity {
     return true;
   }
 
-  @Mutation(() => Boolean)
+  @typeGQL.Mutation(() => Boolean)
   async declineFollowRequest(
-    @Arg("requesterUserId") requesterUserId: number
+    @typeGQL.Arg("requesterUserId") requesterUserId: number
   ): Promise<boolean> {
     this.followRequests = this.followRequests.filter(
       (user) => user.id !== requesterUserId
@@ -167,9 +175,11 @@ export class User extends BaseEntity {
     return true;
   }
 
-  @Mutation(() => Boolean)
-  async follow(@Arg("targetUserId") targetUserId: number): Promise<boolean> {
-    const targetUser = await User.findOne(targetUserId);
+  @typeGQL.Mutation(() => Boolean)
+  async follow(
+    @typeGQL.Arg("targetUserId") targetUserId: number
+  ): Promise<boolean> {
+    const targetUser = await User.findOneBy({ id: targetUserId });
     if (!targetUser) throw new Error("User not found");
     if (!targetUser.isPrivate) {
       this.following.push(targetUser);
@@ -180,17 +190,19 @@ export class User extends BaseEntity {
     return true;
   }
 
-  @Mutation(() => Boolean)
-  async unfollow(@Arg("targetUserId") targetUserId: number): Promise<boolean> {
+  @typeGQL.Mutation(() => Boolean)
+  async unfollow(
+    @typeGQL.Arg("targetUserId") targetUserId: number
+  ): Promise<boolean> {
     this.following = this.following.filter((user) => user.id !== targetUserId);
     await this.save();
     return true;
   }
 
-  @Mutation(() => User)
+  @typeGQL.Mutation(() => User)
   async updateProfile(
-    @Arg("username") username: string,
-    @Arg("email") email: string
+    @typeGQL.Arg("username") username: string,
+    @typeGQL.Arg("email") email: string
   ): Promise<User> {
     this.username = username;
     this.email = email;
