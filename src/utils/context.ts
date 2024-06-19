@@ -1,13 +1,14 @@
-import Resolver from "@/resolvers/Resolver";
 import { DataClass } from "@/utils/dataclass";
 import { PubSub } from "graphql-subscriptions"; // Import PubSub type
 import { QueryRunner } from "typeorm";
+import express from "express";
 
 @DataClass
 export default class Context<Modes = "create" | "read" | "update" | "delete"> {
-  mode: Modes;
-  currentAuthenticatedUser: any;
-  queryRunner: QueryRunner;
+  req: express.Request;
+  // mode: Modes;
+  // currentAuthenticatedUser: any;
+  // queryRunner: QueryRunner;
   pubSub: PubSub;
   scope: any[] = [];
   constructor(props?: Partial<Context>) {

@@ -10,6 +10,7 @@
   "author": "Jacob Valdez",
   "license": "ISC",
   "dependencies": {
+    "@types/express-serve-static-core": "^4.19.3",
     "@types/graphql": "^14.5.0",
     "apollo-server-express": "^3.13.0",
     "bcryptjs": "^2.4.3",

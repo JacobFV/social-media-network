@@ -11,17 +11,6 @@ const resolvers: Function[] = [];
 let apolloServerInstance: ApolloServer | null = null;
 let schemaInstance: any = null;
 
-export function registerResolver(resolver: Function) {
-  resolvers.push(resolver);
-}
-
-const resolverMiddleware: MiddlewareFn<Context> = async (
-  { context, info },
-  next
-) => {
-  return context.withResolverScope(info.path.key as string, next);
-};
-
 export const buildGraphQLSchema: () => Promise<GraphQLSchema> = singleton(
   async () => {
     if (schemaInstance) {
@@ -35,7 +24,7 @@ export const buildGraphQLSchema: () => Promise<GraphQLSchema> = singleton(
     schemaInstance = await buildSchema({
       resolvers: resolvers as NonEmptyArray<Function>,
       authChecker: ({ context: { user } }, roles) => !!user,
-      globalMiddlewares: [resolverMiddleware],
+      globalMiddlewares: [],
     });
     console.debug("GraphQL schema has been built!");
     return schemaInstance;
@@ -52,16 +41,15 @@ export const getOrInitApolloServer: () => Promise<ApolloServer> = singleton(
 
     const schema = await buildGraphQLSchema();
     const pubSub = new PubSub();
-    const queryRunner = appDataSource.createQueryRunner();
+    // const queryRunner = appDataSource.createQueryRunner();
 
     apolloServerInstance = new ApolloServer({
       schema,
       context: ({ req }) =>
         new Context({
-          currentAuthenticatedUser: req.user,
-          queryRunner,
-          config,
-          resolutionChain: [],
+          req,
+          // currentAuthenticatedUser: req.user,
+          // queryRunner,
           pubSub,
         }),
     });
