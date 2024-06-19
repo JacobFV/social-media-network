@@ -17,7 +17,7 @@
 //   // mount???
 // }
 
-export class Server {
+export abstract class Server {
   express: Express;
 
   Router(path: string) {
@@ -29,6 +29,14 @@ export class Server {
   registerRoutesFromObject(object: object, options: { prefix?: string }) {
     // decorate the following class by reaching into its methods and registering those as routes
   }
+}
+
+export class ExpressServer extends Server {
+  express: Express;
+}
+
+export class FastifyServer extends Server {
+  fastify: FastifyInstance;
 }
 
 export async function GET(path?: string) {
