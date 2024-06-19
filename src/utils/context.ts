@@ -4,7 +4,8 @@ import { PubSub } from "graphql-subscriptions"; // Import PubSub type
 import { QueryRunner } from "typeorm";
 
 @DataClass
-export default class Context {
+export default class Context<Modes = "create" | "read" | "update" | "delete"> {
+  mode: Modes;
   currentAuthenticatedUser: any;
   queryRunner: QueryRunner;
   pubSub: PubSub;

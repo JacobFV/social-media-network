@@ -9,45 +9,73 @@ import { UsePermissionsMiddleware } from "@/utils/permissions";
 import { isAuthenticated } from "@/utils/permissions";
 import { createCRUDResolver } from "@/utils/createCRUDResolver";
 import { User } from "@/modules/user/entity";
-import { Api, Server } from "@/utils/api-utils";
+import * as typeREST from "typescript-rest";
 
-const BaseUserResolver = createCRUDResolver(User, "User");
+const BaseUserResolver = createCRUDResolver(User, {
+  name: "User",
+  create: false,
+  read: true, // locked using the field level auth // TODO: implement in typeREST
+  update: true, // locked using the field level auth // TODO: implement in typeREST
+  delete: false,
+});
 
-const server = new Server()
-
-@server.Router("/api/user")
+@typeREST.Path("/api/user")
 @Resolver()
-export class UserResolver extends BaseUserResolver {
-  @()
-  @typeGQL.Mutation(() => String, { description: "Login and return JWT token" })
-  async login(
-    @typeGQL.Arg("username") username: string,
-    @typeGQL.Arg("password") password: string
-  ): Promise<string> {
-    const user = await User.findOneBy({ username });
-    if (!user || !(await user.validatePassword(password))) {
-      throw new Error("Invalid credentials");
-    }
-    return user.generateJWT();
+export class UserService extends BaseUserResolver {
+  async hashPassword(unhashed: string): Promise<string> {
+    return await bcrypt.hash(unhashed, 10);
   }
 
-  @Post
+  async validatePassword(password: string, hashed: string): Promise<boolean> {
+    return await bcrypt.compare(password, hashed);
+  }
+
+  async generateJWT(user: User): Promise<string> {
+    return jwt.sign(
+      { id: user.id, username: user.username },
+      process.env.JWT_SECRET!,
+      { expiresIn: "1h" }
+    );
+  }
+
+  @typeREST.Path("/login")
+  @typeREST.POST
+  @typeGQL.Mutation(() => String, { description: "Login and return JWT token" })
+  async login(
+    @typeREST.PathParam("username") @typeGQL.Arg("username") username: string,
+    @typeREST.PathParam("password") @typeGQL.Arg("password") password: string
+  ): Promise<string> {
+    const user = await User.findOneBy({ username });
+    if (
+      !user ||
+      !(await this.validatePassword(password, user.hashedPassword))
+    ) {
+      throw new Error("Invalid credentials");
+    }
+    return this.generateJWT(user);
+  }
+
+  @typeREST.Path("/register")
+  @typeREST.POST
   @typeGQL.Mutation(() => User)
   async register(
-    @typeGQL.Arg("username") username: string,
-    @typeGQL.Arg("email") email: string,
-    @typeGQL.Arg("password") password: string
+    @typeREST.PathParam("username") @typeGQL.Arg("username") username: string,
+    @typeREST.PathParam("email") @typeGQL.Arg("email") email: string,
+    @typeREST.PathParam("password") @typeGQL.Arg("password") password: string
   ): Promise<User> {
     const user = User.create({ username, email, hashedPassword: password });
     await user.save();
     return user;
   }
 
-  @Post()
+  @typeREST.Path("/request-to-follow")
+  @typeREST.POST
   @typeGQL.Mutation(() => Boolean)
   @UsePermissionsMiddleware(isAuthenticated())
   async requestToFollow(
-    @typeGQL.Arg("targetUserId") targetUserId: number,
+    @typeREST.PathParam("targetUserId")
+    @typeGQL.Arg("targetUserId")
+    targetUserId: number,
     @Ctx() ctx: Context
   ): Promise<boolean> {
     const currentUser = ctx.currentScope;
@@ -60,7 +88,7 @@ export class UserResolver extends BaseUserResolver {
       targetUser.followRequests.push(currentUser);
       await targetUser.save();
       const notification = Notification.create({
-        content: `${this.username} wants to follow you`,
+        content: `${currentUser.username} wants to follow you`,
         user: targetUser,
       });
       await notification.save();
@@ -71,10 +99,13 @@ export class UserResolver extends BaseUserResolver {
     return true;
   }
 
-  @Post()
+  @typeREST.Path("/accept-follow-request")
+  @typeREST.POST
   @typeGQL.Mutation(() => Boolean)
   async acceptFollowRequest(
-    @typeGQL.Arg("requesterUserId") requesterUserId: number
+    @typeREST.PathParam("requesterUserId")
+    @typeGQL.Arg("requesterUserId")
+    requesterUserId: number
   ): Promise<boolean> {
     const requesterUser = await User.findOneBy({ id: requesterUserId });
     if (!requesterUser) throw new Error("User not found");
@@ -88,9 +119,13 @@ export class UserResolver extends BaseUserResolver {
     return true;
   }
 
+  @typeREST.Path("/decline-follow-request")
+  @typeREST.POST
   @typeGQL.Mutation(() => Boolean)
   async declineFollowRequest(
-    @typeGQL.Arg("requesterUserId") requesterUserId: number
+    @typeREST.PathParam("requesterUserId")
+    @typeGQL.Arg("requesterUserId")
+    requesterUserId: number
   ): Promise<boolean> {
     this.followRequests = this.followRequests.filter(
       (user) => user.id !== requesterUserId
@@ -99,9 +134,13 @@ export class UserResolver extends BaseUserResolver {
     return true;
   }
 
+  @typeREST.Path("/follow")
+  @typeREST.POST
   @typeGQL.Mutation(() => Boolean)
   async follow(
-    @typeGQL.Arg("targetUserId") targetUserId: number
+    @typeREST.PathParam("targetUserId")
+    @typeGQL.Arg("targetUserId")
+    targetUserId: number
   ): Promise<boolean> {
     const targetUser = await User.findOneBy({ id: targetUserId });
     if (!targetUser) throw new Error("User not found");
@@ -114,19 +153,25 @@ export class UserResolver extends BaseUserResolver {
     return true;
   }
 
+  @typeREST.Path("/unfollow")
+  @typeREST.POST
   @typeGQL.Mutation(() => Boolean)
   async unfollow(
-    @typeGQL.Arg("targetUserId") targetUserId: number
+    @typeREST.PathParam("targetUserId")
+    @typeGQL.Arg("targetUserId")
+    targetUserId: number
   ): Promise<boolean> {
     this.following = this.following.filter((user) => user.id !== targetUserId);
     await this.save();
     return true;
   }
 
+  @typeREST.Path("/update-profile")
+  @typeREST.POST
   @typeGQL.Mutation(() => User)
   async updateProfile(
-    @typeGQL.Arg("username") username: string,
-    @typeGQL.Arg("email") email: string
+    @typeREST.PathParam("username") @typeGQL.Arg("username") username: string,
+    @typeREST.PathParam("email") @typeGQL.Arg("email") email: string
   ): Promise<User> {
     this.username = username;
     this.email = email;
