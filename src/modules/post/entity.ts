@@ -1,8 +1,8 @@
 import * as typeORM from "typeorm";
 import * as typeGQL from "type-graphql";
-import { User } from "./User";
-import { Comment } from "./Comment";
-import { Like } from "./Like";
+import { User } from "../user/entity";
+import { Comment } from "../comment/entity";
+import { Like } from "../like/entity";
 import Context from "@/utils/context";
 
 @typeGQL.ObjectType()

@@ -1,7 +1,7 @@
 import * as typeORM from "typeorm";
 import * as typeGQL from "type-graphql";
-import { User } from "./User";
-import { Post } from "./Post";
+import { User } from "../user/entity";
+import { Post } from "../post/entity";
 
 @typeGQL.ObjectType()
 @typeORM.Entity()

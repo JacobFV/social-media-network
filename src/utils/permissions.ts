@@ -49,7 +49,7 @@ export function isAuthorizedWithRole(
 export function isOwner(): (context: Context) => Promise<boolean> {
   return async (context: Context): Promise<boolean> => {
       return (
-        const currentRecord = context.currentRecord;
+        const currentRecord = context.currentScope;
         if (!currentRecord) {
         return false
         }

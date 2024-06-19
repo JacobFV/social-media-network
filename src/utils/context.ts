@@ -7,22 +7,21 @@ import { QueryRunner } from "typeorm";
 export default class Context {
   currentAuthenticatedUser: any;
   queryRunner: QueryRunner;
-  config: any;
-  resolutionChain: Resolver[] = [];
   pubSub: PubSub;
+  scope: any[] = [];
   constructor(props?: Partial<Context>) {
     Object.assign(this, props);
   }
-  get currentRecord() {
-    return this.resolutionChain[this.resolutionChain.length - 1];
+  get currentScope() {
+    return this.scope[this.scope.length - 1];
   }
 
-  async withResolverScope(resolver: Resolver, action: () => Promise<any>) {
-    this.resolutionChain.push(resolver);
+  async withScope(scope: any, action: () => Promise<any>) {
+    this.scope.push(scope);
     try {
       return await action();
     } finally {
-      this.resolutionChain.pop();
+      this.scope.pop();
     }
   }
 }
