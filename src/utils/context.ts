@@ -2,28 +2,42 @@ import { DataClass } from "@/utils/dataclass";
 import { PubSub } from "graphql-subscriptions"; // Import PubSub type
 import { QueryRunner } from "typeorm";
 import express from "express";
+import { ExpressContext as ApolloExpressContext } from "apollo-server-express";
+
+export abstract class Context {}
 
 @DataClass
-export default class Context<Modes = "create" | "read" | "update" | "delete"> {
-  req: express.Request;
-  // mode: Modes;
-  // currentAuthenticatedUser: any;
-  // queryRunner: QueryRunner;
-  pubSub: PubSub;
-  scope: any[] = [];
-  constructor(props?: Partial<Context>) {
-    Object.assign(this, props);
-  }
-  get currentScope() {
-    return this.scope[this.scope.length - 1];
-  }
+export class ScopedContext extends Context {
+  scopeStack: any[] = [];
 
-  async withScope(scope: any, action: () => Promise<any>) {
-    this.scope.push(scope);
+  async withScope<T>(
+    overrides: { [key: string]: any },
+    action: (scope: ScopedContext) => Promise<T>
+  ): Promise<T> {
+    const current = this;
+    const newScope = { ...current, ...overrides };
+    this.scopeStack.push(newScope);
     try {
-      return await action();
+      return await action(newScope);
     } finally {
-      this.scope.pop();
+      this.scopeStack.pop();
     }
   }
+}
+
+export interface ExpressContext extends ApolloExpressContext {
+  req: express.Request;
+  res: express.Response;
+}
+
+@DataClass
+export default class ServiceContext
+  extends ScopedContext
+  implements ExpressContext
+{
+  req: express.Request;
+  res: express.Response;
+  user?: any;
+  graphqlPubSub?: PubSub;
+  selectedEntityFromAuthMiddleware?: BaseEntity;
 }

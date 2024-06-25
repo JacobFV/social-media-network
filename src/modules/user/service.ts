@@ -1,26 +1,25 @@
-import { Resolver } from "type-graphql";
-import * as typeORM from "typeorm";
-import * as typeGQL from "type-graphql";
+import typeORM from "typeorm";
+import typeGQL from "type-graphql";
+import typeREST from "typescript-rest";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { Ctx } from "type-graphql";
-import Context from "@/utils/context";
-import { UsePermissionsMiddleware } from "@/utils/permissions";
-import { isAuthenticated } from "@/utils/permissions";
-import { createCRUDResolver } from "@/utils/createCRUDResolver";
+import ServiceContext from "@/utils/context";
 import { User } from "@/modules/user/entity";
-import * as typeREST from "typescript-rest";
+import { Request } from "express";
+import { Notification as AppNotification } from "@/modules/notification/entity";
+import { createCRUDResolver } from "@/utils/crud-graphql-api/create-crud-graphql-resolver";
 
 const BaseUserResolver = createCRUDResolver(User, {
   name: "User",
-  create: false,
-  read: true, // locked using the field level auth // TODO: implement in typeREST
-  update: true, // locked using the field level auth // TODO: implement in typeREST
-  delete: false,
+  create: (context: ServiceContext) => false,
+  read: (context: ServiceContext) => true, // locked using the field level auth // TODO: implement in typeREST
+  update: (context: ServiceContext) => true, // locked using the field level auth // TODO: implement in typeREST
+  delete: (context: ServiceContext) => false,
 });
 
 @typeREST.Path("/api/user")
-@Resolver()
+@typeGQL.Resolver()
 export class UserService extends BaseUserResolver {
   async hashPassword(unhashed: string): Promise<string> {
     return await bcrypt.hash(unhashed, 10);
@@ -76,25 +75,25 @@ export class UserService extends BaseUserResolver {
     @typeREST.PathParam("targetUserId")
     @typeGQL.Arg("targetUserId")
     targetUserId: number,
-    @Ctx() ctx: Context
+    @typeREST.ContextRequest @typeGQL.Ctx() ctx: Request
   ): Promise<boolean> {
-    const currentUser = ctx.currentScope;
-    if (!currentUser) throw new Error("User not found");
-    if (!(currentUser instanceof User)) throw new Error("User not found");
+    const user = ctx.user;
+    if (!user) throw new Error("User not found");
+    if (!(user instanceof User)) throw new Error("User not found");
 
     const targetUser = await User.findOneBy({ id: targetUserId });
     if (!targetUser) throw new Error("User not found");
     if (targetUser.isPrivate) {
-      targetUser.followRequests.push(currentUser);
+      targetUser.followRequests.push(user);
       await targetUser.save();
-      const notification = Notification.create({
-        content: `${currentUser.username} wants to follow you`,
+      const notification = AppNotification.create({
+        content: `${user.username} wants to follow you`,
         user: targetUser,
       });
       await notification.save();
     } else {
-      currentUser.following.push(targetUser);
-      await currentUser.save();
+      user.following.push(targetUser);
+      await user.save();
     }
     return true;
   }
@@ -105,16 +104,23 @@ export class UserService extends BaseUserResolver {
   async acceptFollowRequest(
     @typeREST.PathParam("requesterUserId")
     @typeGQL.Arg("requesterUserId")
-    requesterUserId: number
+    requesterUserId: number,
+    @typeREST.ContextRequest @typeGQL.Ctx() ctx: Request
   ): Promise<boolean> {
     const requesterUser = await User.findOneBy({ id: requesterUserId });
     if (!requesterUser) throw new Error("User not found");
-    this.followRequests = this.followRequests.filter(
+    if (!(requesterUser instanceof User)) throw new Error("User not found");
+
+    const user = ctx.user;
+    if (!user) throw new Error("User not found");
+    if (!(user instanceof User)) throw new Error("User not found");
+
+    user.followRequests = user.followRequests.filter(
       (user) => user.id !== requesterUserId
     );
-    this.followers.push(requesterUser);
-    requesterUser.following.push(this);
-    await this.save();
+    user.followers.push(requesterUser);
+    requesterUser.following.push(user);
+    await user.save();
     await requesterUser.save();
     return true;
   }
@@ -125,12 +131,17 @@ export class UserService extends BaseUserResolver {
   async declineFollowRequest(
     @typeREST.PathParam("requesterUserId")
     @typeGQL.Arg("requesterUserId")
-    requesterUserId: number
+    requesterUserId: number,
+    @typeREST.ContextRequest @typeGQL.Ctx() ctx: Request
   ): Promise<boolean> {
-    this.followRequests = this.followRequests.filter(
+    const user = ctx.user;
+    if (!user) throw new Error("User not found");
+    if (!(user instanceof User)) throw new Error("User not found");
+
+    user.followRequests = user.followRequests.filter(
       (user) => user.id !== requesterUserId
     );
-    await this.save();
+    await user.save();
     return true;
   }
 
@@ -140,13 +151,18 @@ export class UserService extends BaseUserResolver {
   async follow(
     @typeREST.PathParam("targetUserId")
     @typeGQL.Arg("targetUserId")
-    targetUserId: number
+    targetUserId: number,
+    @typeREST.ContextRequest @typeGQL.Ctx() ctx: Request
   ): Promise<boolean> {
+    const user = ctx.user;
+    if (!user) throw new Error("User not found");
+    if (!(user instanceof User)) throw new Error("User not found");
+
     const targetUser = await User.findOneBy({ id: targetUserId });
     if (!targetUser) throw new Error("User not found");
     if (!targetUser.isPrivate) {
-      this.following.push(targetUser);
-      await this.save();
+      user.following.push(targetUser);
+      await user.save();
     } else {
       throw new Error("User is private");
     }
@@ -159,23 +175,40 @@ export class UserService extends BaseUserResolver {
   async unfollow(
     @typeREST.PathParam("targetUserId")
     @typeGQL.Arg("targetUserId")
-    targetUserId: number
+    targetUserId: number,
+    @typeREST.ContextRequest @typeGQL.Ctx() ctx: Request
   ): Promise<boolean> {
-    this.following = this.following.filter((user) => user.id !== targetUserId);
-    await this.save();
+    const user = ctx.user;
+    if (!user) throw new Error("User not found");
+    if (!(user instanceof User)) throw new Error("User not found");
+
+    user.following = user.following.filter((user) => user.id !== targetUserId);
+    await user.save();
     return true;
   }
 
   @typeREST.Path("/update-profile")
   @typeREST.POST
   @typeGQL.Mutation(() => User)
-  async updateProfile(
-    @typeREST.PathParam("username") @typeGQL.Arg("username") username: string,
-    @typeREST.PathParam("email") @typeGQL.Arg("email") email: string
+  async updatePassword(
+    @typeREST.PathParam("currentPassword")
+    @typeGQL.Arg("currentPassword")
+    currentPassword: string,
+    @typeREST.PathParam("newPassword")
+    @typeGQL.Arg("newPassword")
+    newPassword: string,
+    @typeREST.ContextRequest @typeGQL.Ctx() ctx: Request
   ): Promise<User> {
-    this.username = username;
-    this.email = email;
-    await this.save();
-    return this;
+    const user = ctx.user;
+    if (!user) throw new Error("User not found");
+    if (!(user instanceof User)) throw new Error("User not found");
+
+    if (!(await this.validatePassword(currentPassword, user.hashedPassword))) {
+      throw new Error("Invalid credentials");
+    }
+
+    user.hashedPassword = await this.hashPassword(newPassword);
+    await user.save();
+    return user;
   }
 }

@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { Notification } from "../notification/entity";
 import { Ctx } from "type-graphql";
-import Context from "@/utils/context";
+import ServiceContext from "@/utils/context";
 import { UsePermissionsMiddleware } from "@/utils/permissions";
 import { isAuthenticated } from "@/utils/permissions";
 import { User } from "@/modules/user/entity";

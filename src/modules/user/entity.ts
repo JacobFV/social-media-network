@@ -13,9 +13,7 @@ import {
   EntityWithOwner,
 } from "@/modules/base/entity";
 import { Ctx } from "type-graphql";
-import Context from "@/utils/context";
-import { UsePermissionsMiddleware } from "@/utils/permissions";
-import { isAuthenticated } from "@/utils/permissions";
+import ServiceContext from "@/utils/context";
 
 @typeGQL.ObjectType()
 @typeORM.Entity()
@@ -40,7 +38,6 @@ export class User
   @typeORM.Column()
   email: string;
 
-  @typeGQL.Field()
   @typeORM.Column()
   hashedPassword: string;
 

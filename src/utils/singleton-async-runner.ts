@@ -15,13 +15,13 @@ type AsyncFunction<T = any, A extends any[] = any[]> = (
  * @template T The type of the promise result.
  * @template A The type of the arguments array.
  */
-export class SingletonRunner<T = any, A extends any[] = any[]> {
+export class SingletonAsyncRunner<T = any, A extends any[] = any[]> {
   private isRunning = false; // Indicates if the function is currently running.
   private promise: Promise<T> | null = null; // Holds the promise of the current or last operation.
   private func: AsyncFunction<T, A>; // The asynchronous function to be run.
 
   /**
-   * Constructs an instance of SingletonRunner.
+   * Constructs an instance of SingletonAsyncRunner.
    * @param func The asynchronous function to be managed.
    */
   constructor(func: AsyncFunction<T, A>) {
@@ -61,6 +61,6 @@ export class SingletonRunner<T = any, A extends any[] = any[]> {
 export function singleton<T = any, A extends any[] = any[]>(
   func: AsyncFunction<T, A>
 ): AsyncFunction<T, A> {
-  const runner = new SingletonRunner<T, A>(func);
+  const runner = new SingletonAsyncRunner<T, A>(func);
   return (...args: A) => runner.run(...args);
 }

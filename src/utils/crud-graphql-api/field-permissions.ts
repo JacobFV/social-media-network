@@ -1,12 +1,12 @@
-import Context from "@/utils/context";
+import ServiceContext from "@/utils/context";
 import { MiddlewareFn } from "type-graphql";
 import { UseMiddleware, Extensions, createMethodDecorator } from "type-graphql";
 
 // Type for the permission validator function
-type PermissionValidator = (context: Context) => Promise<boolean>;
+export type PermissionValidator = (context: ServiceContext, entity?: any) => Promise<boolean>;
 
 // Permissions middleware factory function
-export function permissions(validator: PermissionValidator): MiddlewareFn<Context> {
+export function permissions(validator: PermissionValidator): MiddlewareFn<ServiceContext> {
   return async ({ context, args }, next) => {
     if (!(await validator(context))) {
       throw new Error("Access denied! You do not have permission to perform this action.");
@@ -26,28 +26,28 @@ export function UsePermissionsMiddleware(validator: PermissionValidator, roles?:
   };
 }
 
-export function isAuthenticated(): (context: Context) => Promise<boolean> {
-  return async (context: Context): Promise<boolean> => {
-    return !!context.currentAuthenticatedUser;
+export function isAuthenticated(): (context: ServiceContext, entity?: any) => Promise<boolean> {
+  return async (context: ServiceContext, entity?: any): Promise<boolean> => {
+    return !!context.user;
   };
 }
 
-export function isAdmin(): (context: Context) => Promise<boolean> {
-  return async (context: Context): Promise<boolean> => {
-    return context.currentAuthenticatedUser.role === "admin";
+export function isAdmin(): (context: ServiceContext, entity?: any) => Promise<boolean> {
+  return async (context: ServiceContext, entity?: any): Promise<boolean> => {
+    return context.user.role === "admin";
   };
 }
 
 export function isAuthorizedWithRole(
   role: string
-): (context: Context) => Promise<boolean> {
-  return async (context: Context): Promise<boolean> => {
-    return context.currentAuthenticatedUser.role === role;
+): (context: ServiceContext, entity?: any) => Promise<boolean> {
+  return async (context: ServiceContext, entity?: any): Promise<boolean> => {
+    return context.user.role === role;
   };
 }
 
-export function isOwner(): (context: Context) => Promise<boolean> {
-  return async (context: Context): Promise<boolean> => {
+export function isOwner(): (context: ServiceContext, entity?: any) => Promise<boolean> {
+  return async (context: ServiceContext, entity?: any): Promise<boolean> => {
       return (
         const currentRecord = context.currentScope;
         if (!currentRecord) {
@@ -56,19 +56,19 @@ export function isOwner(): (context: Context) => Promise<boolean> {
         if (!(currentRecord instanceof OwnedRecord)) {
         return false
         }
-        context.currentAuthenticatedUser.id === currentRecord.ownerId
+        context.user.id === currentRecord.ownerId
     );
   };
 }
 
-export function publicAccess(): (context: Context) => Promise<boolean> {
-  return async (context: Context): Promise<boolean> => {
+export function publicAccess(): (context: ServiceContext) => Promise<boolean> {
+  return async (context: ServiceContext): Promise<boolean> => {
     return true;
   };
 }
 
-export function privateAccess(): (context: Context) => Promise<boolean> {
-  return async (context: Context): Promise<boolean> => {
+export function privateAccess(): (context: ServiceContext) => Promise<boolean> {
+  return async (context: ServiceContext): Promise<boolean> => {
     return false;
   };
 }

@@ -2,10 +2,10 @@ import { ApolloServer } from "apollo-server-express";
 import { PubSub } from "graphql-subscriptions";
 import { buildSchema, MiddlewareFn, NonEmptyArray } from "type-graphql";
 import { config } from "@/core/config";
-import { singleton } from "@/utils/singleton-runner";
+import { singleton } from "@/utils/singleton-async-runner";
 import { appDataSource } from "./db/appDataSource";
 import { GraphQLSchema } from "graphql/type/schema";
-import Context from "@/utils/context";
+import ServiceContext from "@/utils/context";
 
 const resolvers: Function[] = [];
 let apolloServerInstance: ApolloServer | null = null;
@@ -46,11 +46,11 @@ export const getOrInitApolloServer: () => Promise<ApolloServer> = singleton(
     apolloServerInstance = new ApolloServer({
       schema,
       context: ({ req }) =>
-        new Context({
+        new ServiceContext({
           req,
           // currentAuthenticatedUser: req.user,
           // queryRunner,
-          pubSub,
+          graphqlPubSub: pubSub,
         }),
     });
 

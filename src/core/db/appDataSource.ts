@@ -1,6 +1,6 @@
 import { config } from "@/core/config";
 import { entities } from "@/core/db/registry";
-import { singleton } from "@/utils/singleton-runner";
+import { singleton } from "@/utils/singleton-async-runner";
 import { DataSource, EntitySchema } from "typeorm";
 
 export const appDataSource = new DataSource({

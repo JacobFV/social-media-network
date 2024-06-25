@@ -3,7 +3,7 @@ import * as typeGQL from "type-graphql";
 import { User } from "../user/entity";
 import { Comment } from "../comment/entity";
 import { Like } from "../like/entity";
-import Context from "@/utils/context";
+import ServiceContext from "@/utils/context";
 
 @typeGQL.ObjectType()
 @typeORM.Entity()
@@ -73,9 +73,9 @@ export class Post extends typeORM.BaseEntity {
   @typeGQL.Mutation(() => Comment)
   async addComment(
     @typeGQL.Arg("content") content: string,
-    @typeGQL.Ctx() ctx: Context
+    @typeGQL.Ctx() ctx: ServiceContext
   ): Promise<Comment> {
-    const author = ctx.currentAuthenticatedUser;
+    const author = ctx.user;
     if (!author) throw new Error("User not found");
     const comment = Comment.create({ content, author, post: this });
     await comment.save();

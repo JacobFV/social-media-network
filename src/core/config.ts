@@ -1,4 +1,4 @@
-import { DataClass, Default } from "../utils/dataclass";
+import { DataClass, Default } from "@/utils/dataclass";
 
 const PROTOCOLS = ["http", "https", "ws", "wss", "tcp", "udp"] as const;
 type Protocol = (typeof PROTOCOLS)[number];
